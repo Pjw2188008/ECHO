@@ -113,7 +113,7 @@ public class PlayerController : MonoBehaviour
         return headBlocked && kneeClear;
     }
 
-    // 천장 체크 (일어날 수 있는지 확인)
+    // 천장 체크 (일어날 수 있는지 확인) //코드 확인용도
     bool CheckCeiling()
     {
         float checkHeight = standHeight + 0.1f;

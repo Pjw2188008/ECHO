@@ -1,35 +1,49 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class FlashlightController : MonoBehaviour
 {
-    [Header("±âº» ¼³Á¤")]
-    public Light flashlight;        // ¼ÕÀüµî ¶óÀÌÆ® ÄÄÆ÷³ÍÆ®
-    public float maxBattery = 100f; // ÃÖ´ë ¹èÅÍ¸®
-    public float currentBattery;    // ÇöÀç ¹èÅÍ¸®
+    [Header("ê¸°ë³¸ ì„¤ì •")]
+    public Light flashlight;
+    public float maxBattery = 100f;
+    public float currentBattery;
 
-    [Header("¼Óµµ ¼³Á¤")]
-    public float drainRate = 5.0f;     // ¼Ò¸ğ ¼Óµµ (ÄÑÁ® ÀÖÀ» ¶§)
-    public float rechargeRate = 2.0f;  // È¸º¹ ¼Óµµ (²¨Á® ÀÖÀ» ¶§)
+    [Header("ì†ë„ ì„¤ì •")]
+    public float drainRate = 5.0f;
+    public float rechargeRate = 5.0f;
 
-    [Header("¹æÀü ¼³Á¤")]
-    public float recoveryThreshold = 30f; // ¹æÀü ÈÄ ´Ù½Ã ÄÑÁö±â À§ÇÑ ÃÖ¼Ò ¹èÅÍ¸®·®
-    public bool isDepleted = false;       // ¹æÀü »óÅÂÀÎÁö È®ÀÎÇÏ´Â ÇÃ·¡±×
+    [Header("ë°©ì „ ì„¤ì •")]
+    public float recoveryThreshold = 30f; // ë‹¤ì‹œ ì¼œì§€ëŠ” ê¸°ì¤€
+    public bool isDepleted = false;       // ë°©ì „ ìƒíƒœ (ì‚¬ìš© ë¶ˆê°€) í”Œë˜ê·¸
 
-    [Header("»óÅÂ (ÀÚµ¿ È®ÀÎ¿ë)")]
+    [Header("ìƒíƒœ (ìë™ í™•ì¸ìš©)")]
     public bool isLightOn = false;
+
+
+    // â˜… ì¶”ê°€ëœ ë³€ìˆ˜: íšŒë³µ ëª¨ë“œì¸ì§€ í™•ì¸
+    // (0ì´ ë˜ë©´ trueê°€ ë˜ê³ , 100ì´ ë˜ê±°ë‚˜ ë¶ˆì„ ì¼œë©´ falseê°€ ë¨)
+    private bool isRecharging = false;
+
+    [Header("ğŸ”¦ ë¹› ê³µê²© ì„¤ì •")]
+    public Transform cameraTransform;
+    public float lightRange = 15.0f;
+    public LayerMask targetLayer;
 
     void Start()
     {
         currentBattery = maxBattery;
         flashlight.enabled = false;
         isLightOn = false;
+        isRecharging = false; // ì´ˆê¸°í™”
+
+        if (cameraTransform == null) cameraTransform = Camera.main.transform;
+        if (targetLayer == 0) targetLayer = ~0;
     }
 
     void Update()
     {
-        // 1. FÅ° ÀÔ·Â (Åä±Û)
+        // 1. Fí‚¤ ì…ë ¥
         if (Input.GetKeyDown(KeyCode.F))
         {
             if (isLightOn)
@@ -38,11 +52,9 @@ public class FlashlightController : MonoBehaviour
             }
             else
             {
-                // ÄÑ·Á°í ÇÒ ¶§ ¹æÀü »óÅÂÀÎÁö Ã¼Å©
                 if (isDepleted)
                 {
-                    Debug.Log($"¹æÀüµÊ! {recoveryThreshold}%±îÁö ÃæÀü ÇÊ¿ä.");
-                    // ¿©±â¿¡ "Æ½Æ½..." ÇÏ´Â °íÀå³­ ¼Ò¸® È¿°úÀ½À» ³ÖÀ¸¸é ÁÁ½À´Ï´Ù.
+                    Debug.Log($"ë°©ì „ë¨! ìµœì†Œ {recoveryThreshold}%ê¹Œì§€ ê¸°ë‹¤ë ¤ì•¼ í•©ë‹ˆë‹¤.");
                 }
                 else
                 {
@@ -51,46 +63,74 @@ public class FlashlightController : MonoBehaviour
             }
         }
 
-        // 2. ¹èÅÍ¸® ·ÎÁ÷ (¼Ò¸ğ vs È¸º¹)
+        // 2. ë°°í„°ë¦¬ ë¡œì§
         if (isLightOn)
         {
-            // [ÄÑÁü] ¹èÅÍ¸® ¼Ò¸ğ
+            // [ì¼œì§] ë°°í„°ë¦¬ ì†Œëª¨
+            // ë¶ˆì„ ì¼°ìœ¼ë¯€ë¡œ íšŒë³µ ëª¨ë“œëŠ” ê°•ì œë¡œ ë•ë‹ˆë‹¤.
+            isRecharging = false;
+
             if (currentBattery > 0)
             {
                 currentBattery -= Time.deltaTime * drainRate;
+                CheckLightHit();
             }
             else
             {
-                // ¹èÅÍ¸® 0 µµ´Ş -> °­Á¦ ¼Òµî ¹× ¹æÀü »óÅÂ µ¹ÀÔ
+                // ë°°í„°ë¦¬ 0 ë„ë‹¬ -> ë°©ì „ & íšŒë³µ ëª¨ë“œ ì‹œì‘
                 currentBattery = 0;
-                isDepleted = true; // ¹æÀüµÊ! ÀÌÁ¦ 30 Âû ¶§±îÁö ¸ø Å´
+                isDepleted = true;    // ì‚¬ìš© ë¶ˆê°€ ê±¸ê¸°
+                isRecharging = true;  // â˜… íšŒë³µ ëª¨ë“œ ON
                 TurnOff();
-                Debug.Log("¹èÅÍ¸® ¿ÏÀü ¹æÀü! (Æä³ÎÆ¼ ½ÃÀÛ)");
+                Debug.Log("ë°°í„°ë¦¬ ë°©ì „! ì‹œìŠ¤í…œ ì¬ë¶€íŒ… ì‹œì‘...");
             }
         }
         else
         {
-            // [²¨Áü] ¹èÅÍ¸® ÀÚµ¿ È¸º¹
-            if (currentBattery < maxBattery)
+            // [êº¼ì§]
+            // â˜… ìˆ˜ì •ë¨: 0ì„ ì°ì–´ì„œ 'íšŒë³µ ëª¨ë“œ'ê°€ ì¼œì§„ ìƒíƒœì—¬ì•¼ë§Œ íšŒë³µí•©ë‹ˆë‹¤.
+            if (isRecharging)
             {
-                currentBattery += Time.deltaTime * rechargeRate;
-            }
+                if (currentBattery < maxBattery)
+                {
+                    currentBattery += Time.deltaTime * rechargeRate;
+                }
+                else
+                {
+                    // 100% ë„ë‹¬í•˜ë©´ íšŒë³µ ëª¨ë“œ ì¢…ë£Œ
+                    currentBattery = maxBattery;
+                    isRecharging = false;
+                    Debug.Log("ë°°í„°ë¦¬ ì™„ì¶©ë¨.");
+                }
 
-            // ¹æÀü »óÅÂ ÇØÁ¦ ·ÎÁ÷
-            // ¹æÀü »óÅÂ¿´´Âµ¥, ¹èÅÍ¸®°¡ 30À» ³ÑÀ¸¸é ´Ù½Ã ÄÓ ¼ö ÀÖ°Ô Çã¿ë
-            if (isDepleted && currentBattery >= recoveryThreshold)
+                // 30%ê°€ ë„˜ìœ¼ë©´ 'ì‚¬ìš© ë¶ˆê°€(ë°©ì „)' ìƒíƒœë§Œ í•´ì œ
+                // (íšŒë³µ ëª¨ë“œ isRechargingì€ ë„ì§€ ì•ŠìŒ -> ê³„ì† ì°¸)
+                if (isDepleted && currentBattery >= recoveryThreshold)
+                {
+                    isDepleted = false;
+                    Debug.Log("ì†ì „ë“± ì‚¬ìš© ê°€ëŠ¥! (ê³„ì† ì¶©ì „ ì¤‘...)");
+                }
+            }
+            // isRechargingì´ falseë¼ë©´(ì˜ˆ: 50%ì—ì„œ ê»ì„ ë•Œ) íšŒë³µí•˜ì§€ ì•Šê³  ê·¸ëŒ€ë¡œ ë‘ 
+        }
+    }
+
+    void CheckLightHit()
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, lightRange, targetLayer))
+        {
+            ListenerAI monster = hit.collider.GetComponent<ListenerAI>();
+            if (monster != null)
             {
-                isDepleted = false;
-                Debug.Log("¼ÕÀüµî Àç»ç¿ë °¡´É!");
+                monster.HitByLight();
             }
         }
     }
 
     public void TurnOn()
     {
-        // ¹æÀü »óÅÂ¸é ÄÑÁö ¸øÇÔ
         if (isDepleted) return;
-
         flashlight.enabled = true;
         isLightOn = true;
     }

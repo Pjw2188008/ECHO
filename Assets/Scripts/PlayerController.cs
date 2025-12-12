@@ -10,24 +10,23 @@ public class PlayerController : MonoBehaviour
     public float runSpeed = 10f;
     public float crouchSpeed = 3f;
 
-    [Header("2. 시야 및 키 설정 (요청하신 값 적용됨)")]
+    [Header("2. 시야 및 키 설정")]
     public float mouseSensitivity = 2f;
-
-    // 요청하신 값: 서 있을 때 눈높이 0.6, 앉을 때 0.3
     public float standEyeLevel = 0.6f;
     public float crouchEyeLevel = 0.3f;
-
-    // 눈높이에 맞춰서 몸통(캡슐) 크기도 비율에 맞게 조정 (눈보다 조금 더 크게)
-    public float standHeight = 1.0f;       // 서 있을 때 키 (눈높이 0.6 + 머리 여유분)
-    public float crouchHeight = 0.5f;      // 앉았을 때 키 (눈높이 0.3 + 머리 여유분)
+    public float standHeight = 1.0f;
+    public float crouchHeight = 0.5f;
 
     [Header("3. 자동 앉기 설정")]
-    public float obstacleCheckDistance = 1.0f; // 전방 감지 거리
-    public LayerMask obstacleLayer;            // 장애물 레이어
+    public float obstacleCheckDistance = 1.0f;
+    public LayerMask obstacleLayer;
 
     [Header("4. 기타 물리 설정")]
     public float gravity = -20f;
     public float transitionSpeed = 10f;
+
+    [Header("상태 확인")]
+    public bool isCrouching = false; // ★ 몬스터가 확인할 변수
 
     private CharacterController controller;
     private Transform cameraTransform;
@@ -42,11 +41,9 @@ public class PlayerController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // 시작 시 값 초기화
         controller.height = standHeight;
-        controller.center = Vector3.zero; // 중심점은 항상 0으로 시작
+        controller.center = Vector3.zero;
 
-        // 카메라 위치 초기화
         Vector3 camPos = cameraTransform.localPosition;
         camPos.y = standEyeLevel;
         cameraTransform.localPosition = camPos;
@@ -70,12 +67,13 @@ public class PlayerController : MonoBehaviour
 
         Vector3 moveInputDirection = transform.right * x + transform.forward * z;
 
-        // --- 앉기 판단 로직 ---
+        // --- 앉기 판단 로직 (수정됨) ---
         bool manualCrouch = Input.GetKey(KeyCode.C);
         bool hasCeiling = CheckCeiling();
         bool needAutoCrouch = CheckFrontObstacle(moveInputDirection);
 
-        bool isCrouching = manualCrouch || hasCeiling || needAutoCrouch;
+        // ★ [수정] 앞에 'bool'을 지웠습니다! 이제 인스펙터 변수에 값이 들어갑니다.
+        isCrouching = manualCrouch || hasCeiling || needAutoCrouch;
 
         // 3. 속도 및 이동
         float currentSpeed = walkSpeed;
@@ -93,27 +91,23 @@ public class PlayerController : MonoBehaviour
 
         // 4. 높이 조절
         AdjustHeight(isCrouching);
+
+        // ★ [삭제] 맨 밑에 있던 중복된 C키 확인 로직은 지웠습니다.
+        // 위에서 이미 manualCrouch로 계산했기 때문에 필요 없습니다.
+        // 오히려 천장이 있어도 C키를 떼면 일어서버리는 버그를 유발합니다.
     }
 
-    // 자동 앉기 체크 (낮은 구멍 통과용)
     bool CheckFrontObstacle(Vector3 moveDir)
     {
         if (moveDir.magnitude < 0.1f) return false;
-
         Vector3 forward = moveDir.normalized;
-
-        // 이마 높이 체크 (서 있을 때 키 기준 조금 아래)
         Vector3 headOrigin = transform.position + Vector3.up * (standHeight - 0.1f);
         bool headBlocked = Physics.Raycast(headOrigin, forward, obstacleCheckDistance, obstacleLayer);
-
-        // 무릎 높이 체크 (앉았을 때 키의 절반)
         Vector3 kneeOrigin = transform.position + Vector3.up * (crouchHeight * 0.5f);
         bool kneeClear = !Physics.Raycast(kneeOrigin, forward, obstacleCheckDistance, obstacleLayer);
-
         return headBlocked && kneeClear;
     }
 
-    // 천장 체크 (일어날 수 있는지 확인) //코드 확인용도 //111112222
     bool CheckCeiling()
     {
         float checkHeight = standHeight + 0.1f;
@@ -127,7 +121,6 @@ public class PlayerController : MonoBehaviour
 
         controller.height = Mathf.Lerp(controller.height, targetHeight, Time.deltaTime * transitionSpeed);
 
-        // 키가 줄어든 만큼 중심점을 내려서 발 위치 고정
         float heightDelta = standHeight - controller.height;
         controller.center = new Vector3(0, -heightDelta / 2f, 0);
 

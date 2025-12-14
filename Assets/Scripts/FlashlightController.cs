@@ -20,9 +20,7 @@ public class FlashlightController : MonoBehaviour
     [Header("상태 (자동 확인용)")]
     public bool isLightOn = false;
 
-
-    // ★ 추가된 변수: 회복 모드인지 확인
-    // (0이 되면 true가 되고, 100이 되거나 불을 켜면 false가 됨)
+    // 회복 모드인지 확인
     private bool isRecharging = false;
 
     [Header("🔦 빛 공격 설정")]
@@ -35,9 +33,10 @@ public class FlashlightController : MonoBehaviour
         currentBattery = maxBattery;
         flashlight.enabled = false;
         isLightOn = false;
-        isRecharging = false; // 초기화
+        isRecharging = false;
 
         if (cameraTransform == null) cameraTransform = Camera.main.transform;
+        // 레이어 마스크가 설정 안 되어 있으면 모든 레이어 충돌
         if (targetLayer == 0) targetLayer = ~0;
     }
 
@@ -67,28 +66,26 @@ public class FlashlightController : MonoBehaviour
         if (isLightOn)
         {
             // [켜짐] 배터리 소모
-            // 불을 켰으므로 회복 모드는 강제로 끕니다.
             isRecharging = false;
 
             if (currentBattery > 0)
             {
                 currentBattery -= Time.deltaTime * drainRate;
-                CheckLightHit();
+                CheckLightHit(); // ★ 여기서 몬스터 체크
             }
             else
             {
-                // 배터리 0 도달 -> 방전 & 회복 모드 시작
+                // 배터리 0 도달 -> 방전
                 currentBattery = 0;
-                isDepleted = true;    // 사용 불가 걸기
-                isRecharging = true;  // ★ 회복 모드 ON
+                isDepleted = true;
+                isRecharging = true;
                 TurnOff();
                 Debug.Log("배터리 방전! 시스템 재부팅 시작...");
             }
         }
         else
         {
-            // [꺼짐]
-            // ★ 수정됨: 0을 찍어서 '회복 모드'가 켜진 상태여야만 회복합니다.
+            // [꺼짐] 충전 로직
             if (isRecharging)
             {
                 if (currentBattery < maxBattery)
@@ -97,33 +94,45 @@ public class FlashlightController : MonoBehaviour
                 }
                 else
                 {
-                    // 100% 도달하면 회복 모드 종료
                     currentBattery = maxBattery;
                     isRecharging = false;
                     Debug.Log("배터리 완충됨.");
                 }
 
-                // 30%가 넘으면 '사용 불가(방전)' 상태만 해제
-                // (회복 모드 isRecharging은 끄지 않음 -> 계속 참)
                 if (isDepleted && currentBattery >= recoveryThreshold)
                 {
                     isDepleted = false;
                     Debug.Log("손전등 사용 가능! (계속 충전 중...)");
                 }
             }
-            // isRecharging이 false라면(예: 50%에서 껐을 때) 회복하지 않고 그대로 둠
         }
     }
 
+    // ★★★ 여기가 수정된 핵심 부분입니다 ★★★
     void CheckLightHit()
     {
         RaycastHit hit;
+
+        // 디버그: 씬 뷰에서 초록색 선 확인 가능
+        Debug.DrawRay(cameraTransform.position, cameraTransform.forward * lightRange, Color.green);
+
         if (Physics.Raycast(cameraTransform.position, cameraTransform.forward, out hit, lightRange, targetLayer))
         {
-            ListenerAI monster = hit.collider.GetComponent<ListenerAI>();
-            if (monster != null)
+            // 1. ShaderAI인지 확인
+            ShaderAI shaderMonster = hit.collider.GetComponent<ShaderAI>();
+            if (shaderMonster != null)
             {
-                monster.HitByLight();
+                shaderMonster.HitByLight();
+                // Debug.Log("🔦 ShaderAI 몬스터가 빛을 받았습니다!");
+            }
+
+            // 2. ListenerAI인지 확인 (기존 코드)
+            ListenerAI listenerMonster = hit.collider.GetComponent<ListenerAI>();
+            if (listenerMonster != null)
+            {
+                // 주의: ListenerAI 스크립트에도 public void HitByLight() 함수가 있어야 합니다.
+                listenerMonster.HitByLight();
+                // Debug.Log("🔦 ListenerAI 몬스터가 빛을 받았습니다!");
             }
         }
     }

@@ -1,35 +1,32 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System.Collections.Generic;
 
 public enum PathDirection { Left, Right, Center }
 
 public class PathWhisperer : MonoBehaviour
 {
-    [Header("?? Áø½Ç À½¼º")]
+    [Header("ğŸ˜‡ ì§„ì‹¤ ìŒì„±")]
     public AudioClip[] truthLeftClips;
     public AudioClip[] truthRightClips;
     public AudioClip[] truthCenterClips;
 
-    [Header("?? °ÅÁş À½¼º")]
+    [Header("ğŸ˜ˆ ê±°ì§“ ìŒì„±")]
     public AudioClip[] lieLeftClips;
     public AudioClip[] lieRightClips;
     public AudioClip[] lieCenterClips;
 
-    [Header("?? ¼³Á¤")]
+    [Header("âš™ï¸ ì„¤ì •")]
     private bool isFirstEncounter = true;
     private float whisperCooldown = 10.0f;
     private float lastWhisperTime = -100f;
 
-    // ¡Ú ¿ÜºÎ(Æ®¸®°Å)¿¡¼­ È£ÃâÇÏ´Â ÇÔ¼ö
+    // â˜… ì™¸ë¶€(íŠ¸ë¦¬ê±°)ì—ì„œ í˜¸ì¶œí•˜ëŠ” í•¨ìˆ˜
     public void OnEnterIntersection(List<PathDirection> availablePaths, PathDirection correctPath)
     {
-        // ? [»èÁ¦µÊ] ÄğÅ¸ÀÓ Ã¼Å© ÄÚµå »èÁ¦!
-        // if (Time.time - lastWhisperTime < whisperCooldown) return; 
-
-        // Æ®¸®°Å´Â °­Á¦·Î ¼Ò¸®¸¦ ³»¾ß ÇÏ¹Ç·Î ¹Ù·Î ·ÎÁ÷ ½ÇÇà
+        // íŠ¸ë¦¬ê±°ëŠ” ê°•ì œë¡œ ì†Œë¦¬ë¥¼ ë‚´ì•¼ í•˜ë¯€ë¡œ ë°”ë¡œ ë¡œì§ ì‹¤í–‰
         ProcessWhisper(availablePaths, correctPath);
 
-        // ¼Ò¸®¸¦ ³ÂÀ¸´Ï ¸¶Áö¸· ½Ã°£ °»½Å (·£´ı ±Ó¼Ó¸» µî ´Ù¸¥ ½Ã½ºÅÛÀ» À§ÇØ)
+        // ì†Œë¦¬ë¥¼ ëƒˆìœ¼ë‹ˆ ë§ˆì§€ë§‰ ì‹œê°„ ê°±ì‹ 
         lastWhisperTime = Time.time;
     }
 
@@ -39,7 +36,7 @@ public class PathWhisperer : MonoBehaviour
         PathDirection directionToSpeak;
         bool isLieVoice = false;
 
-        // 1. Æ©Åä¸®¾ó (Ã¹ ¸¸³²) : 50 ´ë 50
+        // 1. íŠœí† ë¦¬ì–¼ (ì²« ë§Œë‚¨) : 50 ëŒ€ 50
         if (isFirstEncounter)
         {
             if (rand < 50)
@@ -54,22 +51,22 @@ public class PathWhisperer : MonoBehaviour
             }
             isFirstEncounter = false;
         }
-        // 2. Æò¼Ò : 40 Áø½Ç / 40 °ÅÁş / 20 Ä§¹¬
+        // 2. í‰ì†Œ : 40 ì§„ì‹¤ / 40 ê±°ì§“ / 20 ì¹¨ë¬µ
         else
         {
-            if (rand < 40) // Áø½Ç
+            if (rand < 40) // ì§„ì‹¤
             {
                 directionToSpeak = correctPath;
                 isLieVoice = false;
             }
-            else if (rand < 80) // °ÅÁş
+            else if (rand < 80) // ê±°ì§“
             {
                 directionToSpeak = GetLieDirection(availablePaths, correctPath);
                 isLieVoice = true;
             }
-            else // Ä§¹¬
+            else // ì¹¨ë¬µ
             {
-                Debug.Log("?? [Path] Ä§¹¬ ´çÃ· (Æ®¸®°Å´Â ÀÛµ¿ÇßÀ¸³ª ¿îÀÌ ÁÁ¾Æ Á¶¿ëÇÔ)");
+                Debug.Log("ğŸ˜¶ [Path] ì¹¨ë¬µ ë‹¹ì²¨ (íŠ¸ë¦¬ê±°ëŠ” ì‘ë™í–ˆìœ¼ë‚˜ ìš´ì´ ì¢‹ì•„ ì¡°ìš©í•¨)");
                 return;
             }
         }
@@ -99,7 +96,7 @@ public class PathWhisperer : MonoBehaviour
                 case PathDirection.Right: clip = GetRandomClip(lieRightClips); break;
                 case PathDirection.Center: clip = GetRandomClip(lieCenterClips); break;
             }
-            Debug.Log($"?? [Path] °ÅÁş¸»: Á¤´äÀº {correctPath}ÀÎµ¥ {dir}·Î °¡¶ó ÇÔ.");
+            Debug.Log($"ğŸ˜ˆ [Path] ê±°ì§“ë§: ì •ë‹µì€ {correctPath}ì¸ë° {dir}ë¡œ ê°€ë¼ í•¨.");
         }
         else
         {
@@ -109,10 +106,15 @@ public class PathWhisperer : MonoBehaviour
                 case PathDirection.Right: clip = GetRandomClip(truthRightClips); break;
                 case PathDirection.Center: clip = GetRandomClip(truthCenterClips); break;
             }
-            Debug.Log($"?? [Path] Áø½Ç: {dir}ÀÌ Á¤´äÀÓ.");
+            Debug.Log($"ğŸ˜‡ [Path] ì§„ì‹¤: {dir}ì´ ì •ë‹µì„.");
         }
 
-        if (clip) VoiceManager.Instance.PlayPathVoice(clip);
+        // â˜…â˜…â˜… ì—¬ê¸°ê°€ ìˆ˜ì •ë˜ì—ˆìŠµë‹ˆë‹¤! â˜…â˜…â˜…
+        // ì´ì œ í´ë¦½ê³¼ í•¨ê»˜ "ê±°ì§“ë§ ì—¬ë¶€(isLie)"ë„ ê°™ì´ ë³´ëƒ…ë‹ˆë‹¤.
+        if (clip)
+        {
+            VoiceManager.Instance.PlayPathVoice(clip, isLie);
+        }
     }
 
     AudioClip GetRandomClip(AudioClip[] clips) => (clips != null && clips.Length > 0) ? clips[Random.Range(0, clips.Length)] : null;

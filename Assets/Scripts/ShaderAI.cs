@@ -1,56 +1,59 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(MeshRenderer))]
 public class ShaderAI : MonoBehaviour
 {
-    [Header("?? Å¸°Ù ¼³Á¤")]
+    [Header("ğŸ¯ íƒ€ê²Ÿ ì„¤ì •")]
     public Transform player;
 
-    [Header("?? °¨Áö ¹üÀ§")]
-    [Range(0, 50)] public float warningRadius = 20f;   // 1Â÷: °æ°í & Ãß°İ Æ÷±â °Å¸®
-    [Range(0, 30)] public float detectionRadius = 8f;  // 2Â÷: ÇÃ·¹ÀÌ¾î ÁÖÀ§ ¸Éµ¹±â (Hover)
-    [Range(0, 5)] public float catchRadius = 1.2f;    // 3Â÷: °ÔÀÓ ¿À¹ö (Á¢ÃË)
+    [Header("ğŸ‘€ ê°ì§€ ë²”ìœ„")]
+    [Range(0, 50)] public float warningRadius = 20f;   // 1ì°¨: ê·“ì†ë§ & ê²½ê³  ë²”ìœ„
+    [Range(0, 30)] public float detectionRadius = 8f;  // 2ì°¨: í”Œë ˆì´ì–´ ì£¼ìœ„ ë§´ëŒê¸° (Hover)
+    [Range(0, 5)] public float catchRadius = 1.2f;     // 3ì°¨: ê²Œì„ ì˜¤ë²„ (ì ‘ì´‰)
 
-    [Header("?? ¸Éµ¹±â(Hover) ¼³Á¤")]
-    [Tooltip("ÇÃ·¹ÀÌ¾î ÁÖº¯ ¸î ¹ÌÅÍ ¹İ°æ¿¡¼­ ¸Éµ¹ °ÍÀÎ°¡")]
+    [Header("ğŸ›¸ ë§´ëŒê¸°(Hover) ì„¤ì •")]
+    [Tooltip("í”Œë ˆì´ì–´ ì£¼ë³€ ëª‡ ë¯¸í„° ë°˜ê²½ì—ì„œ ë§´ëŒ ê²ƒì¸ê°€")]
     public float hoverRadius = 4.0f;
-    public float hoverSpeed = 3.5f; // ¸Éµ¹ ¶§ ¼Óµµ
-    private float hoverTimer = 0f;  // ´ÙÀ½ À§Ä¡ °»½Å Å¸ÀÌ¸Ó
+    public float hoverSpeed = 3.5f; // ë§´ëŒ ë•Œ ì†ë„
+    private float hoverTimer = 0f;  // ë‹¤ìŒ ìœ„ì¹˜ ê°±ì‹  íƒ€ì´ë¨¸
 
-    [Header("?? ÀÌµ¿ ¼Óµµ")]
-    public float patrolSpeed = 2.0f; // Æò¼Ò ¹èÈ¸ ¼Óµµ
-    public float chaseSpeed = 7.0f;  // ºĞ³ë ½Ã Ãß°İ ¼Óµµ (ºü¸§!)
+    [Header("ğŸ’¨ ì´ë™ ì†ë„")]
+    public float patrolSpeed = 2.0f; // í‰ì†Œ ë°°íšŒ ì†ë„
+    public float chaseSpeed = 7.0f;  // ë¶„ë…¸ ì‹œ ì¶”ê²© ì†ë„ (ë¹ ë¦„!)
 
-    [Header("?? ºû ¹İÀÀ ¼³Á¤ (ºĞ³ë)")]
-    public float requiredLightTime = 2.0f; // 2ÃÊ ºñÃß¸é È­³²
+    [Header("ğŸ¤¬ ë¹› ë°˜ì‘ ì„¤ì • (ë¶„ë…¸)")]
+    public float requiredLightTime = 2.0f; // 2ì´ˆ ë¹„ì¶”ë©´ í™”ë‚¨
     public float currentLightExposure = 0f;
-    public bool isAggroed = false; // È­³­ »óÅÂÀÎ°¡?
+    public bool isAggroed = false; // í™”ë‚œ ìƒíƒœì¸ê°€?
 
-    [Header("?? ¹èÈ¸(Patrol) ¼³Á¤")]
+    [Header("ğŸš¶ ë°°íšŒ(Patrol) ì„¤ì •")]
     public Vector2 patrolAreaSize = new Vector2(10f, 10f);
     public Vector3 patrolCenterOffset = Vector3.zero;
     public float minWaitTime = 2f;
     public float maxWaitTime = 5f;
 
-    // ³»ºÎ º¯¼ö
+    // ë‚´ë¶€ ë³€ìˆ˜
     private NavMeshAgent agent;
     private MeshRenderer meshRenderer;
     private Vector3 startPosition;
     private Vector3 globalPatrolCenter;
     private float waitTimer = 0f;
 
-    // ºû °¨Áö °ü·Ã
+    // ë¹› ê°ì§€ ê´€ë ¨
     private bool isHitByLightThisFrame = false;
     private float decayDelayTimer = 0f;
     private float decayCooldown = 0.5f;
 
-    // °ÔÀÓ »óÅÂ
+    // ê²Œì„ ìƒíƒœ ë° ê·“ì†ë§
     private bool isPlayerInWarningZone = false;
     private bool isGameOver = false;
 
-    // ÃÊ±â »ö»ó ÀúÀå¿ë
+    // â˜… [ì¶”ê°€ë¨] ê·“ì†ë§ ì¤‘ë³µ ë°©ì§€ ë³€ìˆ˜
+    private bool hasWhispered = false;
+
+    // ì´ˆê¸° ìƒ‰ìƒ ì €ì¥ìš©
     private Color originalColor;
 
     void Start()
@@ -60,15 +63,15 @@ public class ShaderAI : MonoBehaviour
         startPosition = transform.position;
         globalPatrolCenter = startPosition + patrolCenterOffset;
 
-        // ½¦ÀÌ´õ ½ÃÀÛ »ö»ó ÀúÀå (¾øÀ¸¸é Èò»ö °¡Á¤)
+        // ì‰ì´ë” ì‹œì‘ ìƒ‰ìƒ ì €ì¥ (ì—†ìœ¼ë©´ í°ìƒ‰ ê°€ì •)
         if (meshRenderer.material.HasProperty("_BaseColor"))
             originalColor = meshRenderer.material.GetColor("_BaseColor");
         else
             originalColor = Color.white;
 
-        // ?? ½¦ÀÌ´õ Æ¯¼º: µÕµÕ ¶°´Ù´Ï´Â ´À³¦
-        agent.baseOffset = 1.2f; // ¹Ù´Ú¿¡¼­ 1.2m ¶ç¿ò
-        agent.acceleration = 15f; // °¡¼Ó
+        // ğŸ‘» ì‰ì´ë” íŠ¹ì„±: ë‘¥ë‘¥ ë– ë‹¤ë‹ˆëŠ” ëŠë‚Œ
+        agent.baseOffset = 1.2f; // ë°”ë‹¥ì—ì„œ 1.2m ë„ì›€
+        agent.acceleration = 15f; // ê°€ì†
 
         if (player == null)
         {
@@ -83,94 +86,106 @@ public class ShaderAI : MonoBehaviour
     {
         if (isGameOver || player == null) return;
 
-        // 0. °Å¸® °è»ê
+        // 0. ê±°ë¦¬ ê³„ì‚°
         float distance = Vector3.Distance(transform.position, player.position);
 
-        // ?? [ÃÖ¿ì¼±] °ÔÀÓ ¿À¹ö Ã¼Å© (´êÀ¸¸é »ç¸Á)
+        // ğŸ’€ [ìµœìš°ì„ ] ê²Œì„ ì˜¤ë²„ ì²´í¬ (ë‹¿ìœ¼ë©´ ì‚¬ë§)
         if (distance <= catchRadius)
         {
             GameOver();
             return;
         }
 
-        // 1. ºû °ÔÀÌÁö °ü¸® (Ç×»ó ÀÛµ¿)
+        // 1. ë¹› ê²Œì´ì§€ ê´€ë¦¬ (í•­ìƒ ì‘ë™)
         HandleLightExposure();
 
-        // 2. Çàµ¿ °áÁ¤
+        // 2. í–‰ë™ ê²°ì •
         if (isAggroed)
         {
-            // ¡Ú ¼öÁ¤µÊ: È­³­ »óÅÂ¿©µµ °Å¸®°¡ ¸Ö¾îÁö¸é ÁøÁ¤ÇÔ
-            // (¿©±â¼­´Â warningRadius¸¦ µµ¸Á ¼º°ø ±âÁØÀ¸·Î Àâ¾Ò½À´Ï´Ù)
+            // í™”ë‚œ ìƒíƒœì—¬ë„ ê±°ë¦¬ê°€ ë©€ì–´ì§€ë©´ ì§„ì •í•¨
             if (distance > warningRadius)
             {
                 CalmDown();
             }
             else
             {
-                // ¿©ÀüÈ÷ ¹üÀ§ ³»¿¡ ÀÖÀ¸¸é °è¼Ó Ãß°İ
+                // ì—¬ì „íˆ ë²”ìœ„ ë‚´ì— ìˆìœ¼ë©´ ê³„ì† ì¶”ê²©
                 ChasePlayer();
-                // Ãß°İ ÁßÀÏ ¶§´Â ¾Æ·¡ÀÇ ¹èÈ¸ ·ÎÁ÷À» ½ÇÇàÇÏÁö ¾Ê°í ¸®ÅÏ
                 isHitByLightThisFrame = false;
                 return;
             }
         }
 
-        // 3. Æò¼Ò »óÅÂ (È­³ªÁö ¾Ê¾Ò°Å³ª ÁøÁ¤ÇÑ ÈÄ)
+        // 3. í‰ì†Œ ìƒíƒœ (í™”ë‚˜ì§€ ì•Šì•˜ê±°ë‚˜ ì§„ì •í•œ í›„)
         if (distance <= detectionRadius)
         {
-            // [2Â÷ ¹üÀ§] ÇÃ·¹ÀÌ¾î ±ÙÃ³¸¦ ºÒ±ÔÄ¢ÇÏ°Ô ¸Éµ¹±â (Hover)
+            // [2ì°¨ ë²”ìœ„] í”Œë ˆì´ì–´ ê·¼ì²˜ë¥¼ ë¶ˆê·œì¹™í•˜ê²Œ ë§´ëŒê¸° (Hover)
             HoverAroundPlayer();
         }
         else if (distance <= warningRadius)
         {
-            // [1Â÷ ¹üÀ§] °æ°í¸¸ ÇÏ°í, Çàµ¿Àº ¹èÈ¸(Patrol) À¯Áö
+            // [1ì°¨ ë²”ìœ„] ê²½ê³ ë§Œ í•˜ê³ , í–‰ë™ì€ ë°°íšŒ(Patrol) ìœ ì§€
+
+            // â˜… ì—¬ê¸°ê°€ ê·“ì†ë§ í¬ì¸íŠ¸ì…ë‹ˆë‹¤!
             if (!isPlayerInWarningZone)
             {
-                Debug.Log("?? [Shader] ÁÖº¯ °ø±â°¡ Â÷°¡¿öÁø´Ù... (Warning)");
-                isPlayerInWarningZone = true;
+                isPlayerInWarningZone = true; // ë²”ìœ„ ì§„ì… ì²´í¬
+                Debug.Log("ğŸ‘» [Shader] ì£¼ë³€ ê³µê¸°ê°€ ì°¨ê°€ì›Œì§„ë‹¤... (Warning Zone ì§„ì…)");
+
+                // â˜… ì•„ì§ ê·“ì†ë§ì„ ì•ˆ í–ˆë‹¤ë©´? -> ì‹¤í–‰!
+                if (!hasWhispered)
+                {
+                    hasWhispered = true; // ì ê¸ˆ (ì´ì œ ë‹¤ì‹œëŠ” ì‹¤í–‰ ì•ˆ ë¨)
+
+                    if (WhisperManager.Instance != null)
+                    {
+                        // ì‰ì´ë” íƒ€ì…ìœ¼ë¡œ ê·“ì†ë§ ìš”ì²­
+                        WhisperManager.Instance.PlayMonsterWhisper(MonsterType.Shader);
+                    }
+                }
             }
             Patrol();
         }
         else
         {
-            // [¹üÀ§ ¹Û] ÆòÈ­·Ó°Ô ¹èÈ¸
+            // [ë²”ìœ„ ë°–] í‰í™”ë¡­ê²Œ ë°°íšŒ
             isPlayerInWarningZone = false;
             Patrol();
         }
 
-        // ÇÁ·¹ÀÓ Á¾·á Àü ¸®¼Â
+        // í”„ë ˆì„ ì¢…ë£Œ ì „ ë¦¬ì…‹
         isHitByLightThisFrame = false;
     }
 
-    // --- ?? ¸Éµ¹±â (Hover) ·ÎÁ÷ : ºÒ±ÔÄ¢ÇÑ ¿òÁ÷ÀÓ ---
+    // --- ğŸ›¸ ë§´ëŒê¸° (Hover) ë¡œì§ : ë¶ˆê·œì¹™í•œ ì›€ì§ì„ ---
     void HoverAroundPlayer()
     {
         agent.speed = hoverSpeed;
 
-        // ¸ñÀûÁö¿¡ °ÅÀÇ µµÂøÇß°Å³ª, ÀÏÁ¤ ½Ã°£ÀÌ Áö³ª¸é »õ·Î¿î À§Ä¡ °»½Å
+        // ëª©ì ì§€ì— ê±°ì˜ ë„ì°©í–ˆê±°ë‚˜, ì¼ì • ì‹œê°„ì´ ì§€ë‚˜ë©´ ìƒˆë¡œìš´ ìœ„ì¹˜ ê°±ì‹ 
         hoverTimer -= Time.deltaTime;
 
         if (agent.remainingDistance <= agent.stoppingDistance || hoverTimer <= 0)
         {
-            // ÇÃ·¹ÀÌ¾î À§Ä¡ ±âÁØÀ¸·Î ·£´ıÇÑ ¿ÀÇÁ¼Â(¹İ°æ ³»)À» ´õÇÔ
+            // í”Œë ˆì´ì–´ ìœ„ì¹˜ ê¸°ì¤€ìœ¼ë¡œ ëœë¤í•œ ì˜¤í”„ì…‹(ë°˜ê²½ ë‚´)ì„ ë”í•¨
             Vector3 randomOffset = Random.insideUnitSphere * hoverRadius;
-            randomOffset.y = 0; // ³ôÀÌ´Â NavMesh°¡ ¾Ë¾Æ¼­ Ã³¸®
+            randomOffset.y = 0; // ë†’ì´ëŠ” NavMeshê°€ ì•Œì•„ì„œ ì²˜ë¦¬
 
             Vector3 targetPos = player.position + randomOffset;
 
             NavMeshHit hit;
-            // À¯È¿ÇÑ ¶¥ÀÎÁö È®ÀÎÇÏ°í ÀÌµ¿
+            // ìœ íš¨í•œ ë•…ì¸ì§€ í™•ì¸í•˜ê³  ì´ë™
             if (NavMesh.SamplePosition(targetPos, out hit, 5.0f, NavMesh.AllAreas))
             {
                 agent.SetDestination(hit.position);
             }
 
-            // 1~2ÃÊ¸¶´Ù À§Ä¡¸¦ ¹Ù²Ş (¿¹Ãø ºÒ°¡´ÉÇÏ°Ô)
+            // 1~2ì´ˆë§ˆë‹¤ ìœ„ì¹˜ë¥¼ ë°”ê¿ˆ (ì˜ˆì¸¡ ë¶ˆê°€ëŠ¥í•˜ê²Œ)
             hoverTimer = Random.Range(1.0f, 2.5f);
         }
     }
 
-    // --- ?? ºû & ºĞ³ë ·ÎÁ÷ ---
+    // --- ğŸ’¡ ë¹› & ë¶„ë…¸ ë¡œì§ ---
     public void HitByLight()
     {
         isHitByLightThisFrame = true;
@@ -183,11 +198,11 @@ public class ShaderAI : MonoBehaviour
             currentLightExposure += Time.deltaTime;
             decayDelayTimer = decayCooldown;
 
-            // ½Ã°¢ È¿°ú: ºû ¹ŞÀ¸¸é Á¡Á¡ »¡°³Áü (°æ°í)
+            // ì‹œê° íš¨ê³¼: ë¹› ë°›ìœ¼ë©´ ì ì  ë¹¨ê°œì§ (ê²½ê³ )
             if (meshRenderer != null)
                 meshRenderer.material.color = Color.Lerp(originalColor, new Color(1, 0.5f, 0.5f), currentLightExposure / requiredLightTime);
 
-            // °ÔÀÌÁö ²Ë Â÷¸é -> ºĞ³ë ¸ğµå ¹ßµ¿!
+            // ê²Œì´ì§€ ê½‰ ì°¨ë©´ -> ë¶„ë…¸ ëª¨ë“œ ë°œë™!
             if (currentLightExposure >= requiredLightTime && !isAggroed)
             {
                 BecomeAggressive();
@@ -195,12 +210,12 @@ public class ShaderAI : MonoBehaviour
         }
         else
         {
-            // ºû ²÷±è (À¯¿¹ ½Ã°£ Àû¿ë)
+            // ë¹› ëŠê¹€ (ìœ ì˜ˆ ì‹œê°„ ì ìš©)
             if (decayDelayTimer > 0) decayDelayTimer -= Time.deltaTime;
             else
             {
                 currentLightExposure -= Time.deltaTime;
-                // È­³­ »óÅÂ°¡ ¾Æ´Ò ¶§¸¸ »ö º¹±¸ (È­³ª¸é °è¼Ó »¡°­ À¯Áö)
+                // í™”ë‚œ ìƒíƒœê°€ ì•„ë‹ ë•Œë§Œ ìƒ‰ ë³µêµ¬ (í™”ë‚˜ë©´ ê³„ì† ë¹¨ê°• ìœ ì§€)
                 if (!isAggroed && meshRenderer != null) meshRenderer.material.color = originalColor;
             }
             if (currentLightExposure < 0) currentLightExposure = 0;
@@ -210,36 +225,35 @@ public class ShaderAI : MonoBehaviour
     void BecomeAggressive()
     {
         isAggroed = true;
-        Debug.Log("?? [Shader] ²ô¾Æ¾Æ¾Ç!! (ºĞ³ë: Ãß°İ ½ÃÀÛ)");
+        Debug.Log("ğŸ¤¬ [Shader] ë„ì•„ì•„ì•…!! (ë¶„ë…¸: ì¶”ê²© ì‹œì‘)");
         agent.speed = chaseSpeed;
 
-        // ¿ÏÀü »¡°£»ö
+        // ì™„ì „ ë¹¨ê°„ìƒ‰
         if (meshRenderer != null) meshRenderer.material.color = Color.red;
     }
 
-    // ¡Ú Ãß°¡µÊ: ÁøÁ¤ÇÏ±â ÇÔ¼ö
     void CalmDown()
     {
         isAggroed = false;
-        currentLightExposure = 0f; // ½×ÀÎ °ÔÀÌÁö ÃÊ±âÈ­
-        agent.speed = patrolSpeed; // ¼Óµµ º¹±¸
+        currentLightExposure = 0f; // ìŒ“ì¸ ê²Œì´ì§€ ì´ˆê¸°í™”
+        agent.speed = patrolSpeed; // ì†ë„ ë³µêµ¬
 
-        // »ö»ó º¹±¸
+        // ìƒ‰ìƒ ë³µêµ¬
         if (meshRenderer != null) meshRenderer.material.color = originalColor;
 
-        Debug.Log("?? [Shader] ÇÃ·¹ÀÌ¾î¸¦ ³õÃÆ´Ù... ´Ù½Ã ¹èÈ¸ÇÑ´Ù.");
+        Debug.Log("ğŸ˜“ [Shader] í”Œë ˆì´ì–´ë¥¼ ë†“ì³¤ë‹¤... ë‹¤ì‹œ ë°°íšŒí•œë‹¤.");
 
-        // ¸ÛÇÏ´Ï ¼­ÀÖÁö ¸»°í ¹Ù·Î »õ·Î¿î ¹èÈ¸ Àå¼Ò·Î ÀÌµ¿
+        // ë©í•˜ë‹ˆ ì„œìˆì§€ ë§ê³  ë°”ë¡œ ìƒˆë¡œìš´ ë°°íšŒ ì¥ì†Œë¡œ ì´ë™
         SetRandomDestination();
     }
 
     void ChasePlayer()
     {
-        // ¸Í·ÄÈ÷ ÇÃ·¹ÀÌ¾î À§Ä¡·Î µ¹Áø
+        // ë§¹ë ¬íˆ í”Œë ˆì´ì–´ ìœ„ì¹˜ë¡œ ëŒì§„
         agent.SetDestination(player.position);
     }
 
-    // --- ?? ¹èÈ¸ (Patrol) ---
+    // --- ğŸš¶ ë°°íšŒ (Patrol) ---
     void Patrol()
     {
         agent.speed = patrolSpeed;
@@ -273,31 +287,31 @@ public class ShaderAI : MonoBehaviour
         isGameOver = true;
         agent.isStopped = true;
         Time.timeScale = 0;
-        Debug.LogError("?? ½¦ÀÌ´õ¿¡°Ô ´ê¾Æ ¿µÈ¥ÀÌ Àá½ÄµÇ¾ú½À´Ï´Ù.");
+        Debug.LogError("ğŸ’€ ì‰ì´ë”ì—ê²Œ ë‹¿ì•„ ì˜í˜¼ì´ ì ì‹ë˜ì—ˆìŠµë‹ˆë‹¤.");
     }
 
     void OnDrawGizmosSelected()
     {
-        // °¨Áö ¹üÀ§
-        Gizmos.color = new Color(1, 1, 0, 0.2f); // °æ°í (³ë¶û)
+        // ê°ì§€ ë²”ìœ„
+        Gizmos.color = new Color(1, 1, 0, 0.2f); // ê²½ê³  (ë…¸ë‘)
         Gizmos.DrawWireSphere(transform.position, warningRadius);
 
-        Gizmos.color = new Color(0, 1, 1, 0.3f); // ¸Éµ¹±â (ÇÏ´Ã»ö)
+        Gizmos.color = new Color(0, 1, 1, 0.3f); // ë§´ëŒê¸° (í•˜ëŠ˜ìƒ‰)
         Gizmos.DrawWireSphere(transform.position, detectionRadius);
 
-        Gizmos.color = Color.black; // »ç¸Á (°ËÁ¤)
+        Gizmos.color = Color.black; // ì‚¬ë§ (ê²€ì •)
         Gizmos.DrawWireSphere(transform.position, catchRadius);
 
-        // ¹èÈ¸ ±¸¿ª (ÃÊ·Ï »óÀÚ)
+        // ë°°íšŒ êµ¬ì—­ (ì´ˆë¡ ìƒì)
         Gizmos.color = new Color(0, 1, 0, 0.5f);
         Vector3 basePos = Application.isPlaying ? startPosition : transform.position;
         Vector3 center = basePos + patrolCenterOffset;
         Gizmos.DrawWireCube(center, new Vector3(patrolAreaSize.x, 1f, patrolAreaSize.y));
 
-        // ¸Éµ¹±â ¹üÀ§ ¿¹»óµµ (ÇÃ·¹ÀÌ¾î ±âÁØ)
+        // ë§´ëŒê¸° ë²”ìœ„ ì˜ˆìƒë„ (í”Œë ˆì´ì–´ ê¸°ì¤€)
         if (player != null)
         {
-            Gizmos.color = new Color(0.5f, 0, 1f, 0.5f); // º¸¶ó»ö Á¡¼± ´À³¦
+            Gizmos.color = new Color(0.5f, 0, 1f, 0.5f); // ë³´ë¼ìƒ‰ ì ì„  ëŠë‚Œ
             Gizmos.DrawWireSphere(player.position, hoverRadius);
         }
     }

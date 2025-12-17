@@ -10,9 +10,9 @@ public class ListenerAI : MonoBehaviour
     public PlayerController playerScript;
 
     [Header("📏 감지 범위")]
-    [Range(0, 50)] public float warningRadius = 20f;
-    [Range(0, 30)] public float detectionRadius = 10f;
-    [Range(0, 5)] public float catchRadius = 1.2f;
+    [Range(0, 50)] public float warningRadius = 20f; // 1차: 귓속말 & 경고
+    [Range(0, 30)] public float detectionRadius = 10f; // 2차: 추격 시작
+    [Range(0, 5)] public float catchRadius = 1.2f; // 3차: 게임오버
 
     [Header("🧱 벽 투시 방지 (장애물)")]
     public LayerMask obstacleLayer; // 벽이나 장애물 레이어 (설정 필수)
@@ -46,6 +46,9 @@ public class ListenerAI : MonoBehaviour
     private bool isChasing = false;
     private bool isPlayerInWarningZone = false;
     private bool isGameOver = false;
+
+    // ★ [추가됨] 귓속말 중복 방지 변수
+    private bool hasWhispered = false;
 
     private bool isHitByLightThisFrame = false;
     private float stunTimer = 0f;
@@ -88,18 +91,32 @@ public class ListenerAI : MonoBehaviour
 
         float distance = Vector3.Distance(transform.position, player.position);
 
+        // 1. 게임 오버 체크
         if (distance <= catchRadius)
         {
             GameOver();
             return;
         }
 
+        // 2. 경고 범위 (귓속말 포인트)
         if (distance <= warningRadius)
         {
             if (!isPlayerInWarningZone)
             {
-                Debug.Log("👂 [Listener] 쉿... 놈이 근처에 있어.");
+                Debug.Log("👂 [Listener] 쉿... 놈이 근처에 있어. (Warning Zone 진입)");
                 isPlayerInWarningZone = true;
+
+                // ★ 아직 귓속말을 안 했다면? -> 실행!
+                if (!hasWhispered)
+                {
+                    hasWhispered = true; // 잠금 (다시는 실행 안 됨)
+
+                    if (WhisperManager.Instance != null)
+                    {
+                        // 리스너 타입으로 귓속말 요청
+                        WhisperManager.Instance.PlayMonsterWhisper(MonsterType.Listener);
+                    }
+                }
             }
         }
         else
@@ -107,6 +124,7 @@ public class ListenerAI : MonoBehaviour
             isPlayerInWarningZone = false;
         }
 
+        // 3. 감지 및 추격 로직
         if (distance <= detectionRadius)
         {
             CheckForPlayer();

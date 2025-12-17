@@ -156,7 +156,7 @@ MonoBehaviour:
   hasRight: 1
   hasCenter: 0
   correctDirection: 1
-  oneTimeUse: 0
+  oneTimeUse: 1
 --- !u!65 &18287741
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -857,7 +857,7 @@ MonoBehaviour:
   hasRight: 0
   hasCenter: 1
   correctDirection: 0
-  oneTimeUse: 0
+  oneTimeUse: 1
 --- !u!65 &391035196
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1223,7 +1223,7 @@ MonoBehaviour:
   hasRight: 1
   hasCenter: 1
   correctDirection: 1
-  oneTimeUse: 0
+  oneTimeUse: 1
 --- !u!65 &686713520
 BoxCollider:
   m_ObjectHideFlags: 0

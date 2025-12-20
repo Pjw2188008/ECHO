@@ -53,10 +53,16 @@ public class ListenerAI : MonoBehaviour
     private bool isHitByLightThisFrame = false;
     private float stunTimer = 0f;
 
+    private Animator anim; // 추가
+
     void Start()
     {
+        
+        
+
         agent = GetComponent<NavMeshAgent>();
         meshRenderer = GetComponent<MeshRenderer>();
+        anim = GetComponent<Animator>(); // 애니메이션 추가
         startPosition = transform.position;
         globalPatrolCenter = startPosition + patrolCenterOffset;
 
@@ -81,6 +87,9 @@ public class ListenerAI : MonoBehaviour
         // 에러 방지용 안전장치
         if (isGameOver || player == null || playerScript == null) return;
 
+        // 1. 애니메이션 상태 업데이트 (스턴 체크 포함)
+        UpdateAnimationStates();
+
         if (isStunned)
         {
             HandleStun();
@@ -94,7 +103,11 @@ public class ListenerAI : MonoBehaviour
         // 1. 게임 오버 체크
         if (distance <= catchRadius)
         {
-            GameOver();
+            if (!isGameOver)
+            {
+                if (anim != null) anim.SetTrigger("Attack"); // 공격은 트리거!
+                GameOver();
+            }
             return;
         }
 
@@ -136,6 +149,43 @@ public class ListenerAI : MonoBehaviour
         }
 
         isHitByLightThisFrame = false;
+    }
+
+    // 애니메이션 상태를 결정하는 전용 함수
+    void UpdateAnimationStates()
+    {
+        if (anim == null) return;
+
+        // 스턴 상태일 때는 무조건 Idle만 true로 설정
+        if (isStunned)
+        {
+            anim.SetBool("IsIdle", true);
+            anim.SetBool("IsWalk", false);
+            anim.SetBool("IsRun", false);
+            return;
+        }
+
+        // 현재 실제 이동 속도 확인
+        float speed = agent.velocity.magnitude;
+
+        if (speed < 0.1f) // 정지 상태
+        {
+            anim.SetBool("IsIdle", true);
+            anim.SetBool("IsWalk", false);
+            anim.SetBool("IsRun", false);
+        }
+        else if (speed <= wanderSpeed + 0.5f) // 걷기 상태
+        {
+            anim.SetBool("IsIdle", false);
+            anim.SetBool("IsWalk", true);
+            anim.SetBool("IsRun", false);
+        }
+        else // 뛰기 상태 (chaseSpeed 등)
+        {
+            anim.SetBool("IsIdle", false);
+            anim.SetBool("IsWalk", false);
+            anim.SetBool("IsRun", true);
+        }
     }
 
     // ▼▼▼ [수정] 벽 검사 기능이 추가된 플레이어 확인 함수 ▼▼▼

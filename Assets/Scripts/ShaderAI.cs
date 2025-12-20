@@ -70,7 +70,7 @@ public class ShaderAI : MonoBehaviour
             originalColor = Color.white;
 
         // 👻 쉐이더 특성: 둥둥 떠다니는 느낌
-        agent.baseOffset = 1.2f; // 바닥에서 1.2m 띄움
+        agent.baseOffset = 0.2f; // 바닥에서 1.2m 띄움
         agent.acceleration = 15f; // 가속
 
         if (player == null)

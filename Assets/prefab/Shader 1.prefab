@@ -140,7 +140,7 @@ MonoBehaviour:
   hoverSpeed: 3.5
   patrolSpeed: 2
   chaseSpeed: 7
-  requiredLightTime: 2
+  requiredLightTime: 1
   currentLightExposure: 0
   isAggroed: 0
   patrolAreaSize: {x: 53.01, y: 9.3}

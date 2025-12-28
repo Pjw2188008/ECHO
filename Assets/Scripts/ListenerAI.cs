@@ -1,21 +1,29 @@
 ﻿using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement; // ★ [추가] 씬 이동을 위해 필수!
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(MeshRenderer))]
 public class ListenerAI : MonoBehaviour
 {
+    [Header("💀 게임오버 UI 연결")]
+    public GameObject gameOverUI; // ★ [추가] 여기에 'GameOverPanel'을 연결하세요.
+
+    [Header("📷 카메라 잠금 설정")]
+    public MonoBehaviour playerCameraScript;
+
+
     [Header("🎯 타겟 설정")]
     public Transform player;
     public PlayerController playerScript;
 
     [Header("📏 감지 범위")]
-    [Range(0, 50)] public float warningRadius = 20f; // 1차: 귓속말 & 경고
-    [Range(0, 30)] public float detectionRadius = 10f; // 2차: 추격 시작
-    [Range(0, 5)] public float catchRadius = 1.2f; // 3차: 게임오버
+    [Range(0, 50)] public float warningRadius = 20f;
+    [Range(0, 30)] public float detectionRadius = 10f;
+    [Range(0, 5)] public float catchRadius = 1.2f;
 
     [Header("🧱 벽 투시 방지 (장애물)")]
-    public LayerMask obstacleLayer; // 벽이나 장애물 레이어 (설정 필수)
+    public LayerMask obstacleLayer;
 
     [Header("🏃 이동 속도")]
     public float wanderSpeed = 2.0f;
@@ -47,26 +55,20 @@ public class ListenerAI : MonoBehaviour
     private bool isPlayerInWarningZone = false;
     private bool isGameOver = false;
 
-    // ★ [추가됨] 귓속말 중복 방지 변수
     private bool hasWhispered = false;
-
     private bool isHitByLightThisFrame = false;
     private float stunTimer = 0f;
 
-    private Animator anim; // 추가
+    private Animator anim;
 
     void Start()
     {
-        
-        
-
         agent = GetComponent<NavMeshAgent>();
         meshRenderer = GetComponent<MeshRenderer>();
-        anim = GetComponent<Animator>(); // 애니메이션 추가
+        anim = GetComponent<Animator>();
         startPosition = transform.position;
         globalPatrolCenter = startPosition + patrolCenterOffset;
 
-        // 장애물 레이어가 설정 안 되어있으면, 기본적으로 모든 것을 검사하도록 설정
         if (obstacleLayer == 0) obstacleLayer = ~0;
 
         if (player == null)
@@ -79,15 +81,16 @@ public class ListenerAI : MonoBehaviour
             }
         }
 
+        // ★ Start에는 UI를 끄는 코드가 없습니다. 
+        // (유니티 에디터에서 미리 꺼두신 설정 그대로 시작됩니다)
+
         SetRandomDestination();
     }
 
     void Update()
     {
-        // 에러 방지용 안전장치
         if (isGameOver || player == null || playerScript == null) return;
 
-        // 1. 애니메이션 상태 업데이트 (스턴 체크 포함)
         UpdateAnimationStates();
 
         if (isStunned)
@@ -105,30 +108,23 @@ public class ListenerAI : MonoBehaviour
         {
             if (!isGameOver)
             {
-                if (anim != null) anim.SetTrigger("Attack"); // 공격은 트리거!
+                if (anim != null) anim.SetTrigger("Attack");
                 GameOver();
             }
             return;
         }
 
-        // 2. 경고 범위 (귓속말 포인트)
+        // 2. 경고 범위
         if (distance <= warningRadius)
         {
             if (!isPlayerInWarningZone)
             {
-                Debug.Log("👂 [Listener] 쉿... 놈이 근처에 있어. (Warning Zone 진입)");
                 isPlayerInWarningZone = true;
-
-                // ★ 아직 귓속말을 안 했다면? -> 실행!
                 if (!hasWhispered)
                 {
-                    hasWhispered = true; // 잠금 (다시는 실행 안 됨)
-
-                    if (WhisperManager.Instance != null)
-                    {
-                        // 리스너 타입으로 귓속말 요청
-                        WhisperManager.Instance.PlayMonsterWhisper(MonsterType.Listener);
-                    }
+                    hasWhispered = true;
+                    // 귓속말 매니저가 있다면 실행
+                    // if (WhisperManager.Instance != null) WhisperManager.Instance.PlayMonsterWhisper(MonsterType.Listener);
                 }
             }
         }
@@ -137,7 +133,7 @@ public class ListenerAI : MonoBehaviour
             isPlayerInWarningZone = false;
         }
 
-        // 3. 감지 및 추격 로직
+        // 3. 감지 및 추격
         if (distance <= detectionRadius)
         {
             CheckForPlayer();
@@ -151,12 +147,10 @@ public class ListenerAI : MonoBehaviour
         isHitByLightThisFrame = false;
     }
 
-    // 애니메이션 상태를 결정하는 전용 함수
     void UpdateAnimationStates()
     {
         if (anim == null) return;
 
-        // 스턴 상태일 때는 무조건 Idle만 true로 설정
         if (isStunned)
         {
             anim.SetBool("IsIdle", true);
@@ -165,22 +159,21 @@ public class ListenerAI : MonoBehaviour
             return;
         }
 
-        // 현재 실제 이동 속도 확인
         float speed = agent.velocity.magnitude;
 
-        if (speed < 0.1f) // 정지 상태
+        if (speed < 0.1f)
         {
             anim.SetBool("IsIdle", true);
             anim.SetBool("IsWalk", false);
             anim.SetBool("IsRun", false);
         }
-        else if (speed <= wanderSpeed + 0.5f) // 걷기 상태
+        else if (speed <= wanderSpeed + 0.5f)
         {
             anim.SetBool("IsIdle", false);
             anim.SetBool("IsWalk", true);
             anim.SetBool("IsRun", false);
         }
-        else // 뛰기 상태 (chaseSpeed 등)
+        else
         {
             anim.SetBool("IsIdle", false);
             anim.SetBool("IsWalk", false);
@@ -188,10 +181,8 @@ public class ListenerAI : MonoBehaviour
         }
     }
 
-    // ▼▼▼ [수정] 벽 검사 기능이 추가된 플레이어 확인 함수 ▼▼▼
     void CheckForPlayer()
     {
-        // 1. 앉아있는지 확인 (앉아있으면 안전)
         if (playerScript.isCrouching)
         {
             StopChasing();
@@ -199,31 +190,22 @@ public class ListenerAI : MonoBehaviour
             return;
         }
 
-        // 2. 벽 검사 (Raycast)
         Vector3 dirToPlayer = (player.position - transform.position).normalized;
         float dstToPlayer = Vector3.Distance(transform.position, player.position);
-
-        // 눈높이 보정 (바닥끼리 체크하면 땅에 걸릴 수 있으므로 1m 위에서 쏨)
         Vector3 startEye = transform.position + Vector3.up * 1.0f;
 
-        // 몬스터 눈에서 플레이어 방향으로 레이저 발사
         if (Physics.Raycast(startEye, dirToPlayer, out RaycastHit hit, dstToPlayer, obstacleLayer))
         {
-            // 무언가에 부딪혔는데, 그게 플레이어가 아니다? -> 벽이다!
             if (hit.transform != player)
             {
-                // 벽에 가려짐 -> 추격 안 함 -> 배회 계속
-                // Debug.Log("벽 때문에 안 보임");
                 StopChasing();
                 Patrol();
                 return;
             }
         }
 
-        // 3. 앉지도 않았고, 벽도 없다 -> 추격 시작!
         StartChasing();
     }
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     void Patrol()
     {
@@ -253,7 +235,6 @@ public class ListenerAI : MonoBehaviour
         }
     }
 
-    // --- 기존 함수들 ---
     public void HitByLight() { isHitByLightThisFrame = true; }
 
     void HandleLightExposure()
@@ -325,13 +306,39 @@ public class ListenerAI : MonoBehaviour
         }
     }
 
+    // ▼▼▼ [수정된 게임오버 함수] ▼▼▼
     void GameOver()
     {
         if (isGameOver) return;
         isGameOver = true;
+
         agent.isStopped = true;
-        Time.timeScale = 0;
+        Time.timeScale = 0; // [필수] 시간 정지
+
+        // ★ 여기서 UI를 강제로 켭니다!
+        if (gameOverUI != null)
+        {
+            gameOverUI.SetActive(true);
+        }
+
+        if (playerCameraScript != null)
+        {
+            playerCameraScript.enabled = false; // "야, 이제 작동하지 마!"
+        }
+
+        // [필수] 마우스 커서 보이게 하기
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
         Debug.LogError("💀 Game Over");
+    }
+
+    // ▼▼▼ [추가된 타이틀 이동 함수] ▼▼▼
+    // "타이틀로 돌아가기" 버튼의 OnClick()에 연결하세요.
+    public void GoToTitle()
+    {
+        Time.timeScale = 1f; // [필수] 시간 흐름 복구
+        SceneManager.LoadScene("StartScene"); // 이름 꼭 확인!
     }
 
     void OnDrawGizmosSelected()
@@ -348,22 +355,18 @@ public class ListenerAI : MonoBehaviour
         Vector3 center = basePos + patrolCenterOffset;
         Vector3 size = new Vector3(patrolAreaSize.x, 1f, patrolAreaSize.y);
         Gizmos.DrawWireCube(center, size);
-        Gizmos.color = Color.green;
-        Gizmos.DrawSphere(center, 0.3f);
         Gizmos.DrawLine(basePos, center);
 
-        // ★ 벽 감지 디버그 선 (플레이어와 연결선)
         if (player != null)
         {
-            // 벽에 막히면 빨간선, 뚫려있으면 하얀선
             Vector3 startEye = transform.position + Vector3.up * 1.0f;
             Vector3 dir = (player.position - transform.position).normalized;
             float dist = Vector3.Distance(transform.position, player.position);
 
             if (Physics.Raycast(startEye, dir, dist, obstacleLayer))
-                Gizmos.color = Color.red; // 벽 있음
+                Gizmos.color = Color.red;
             else
-                Gizmos.color = Color.white; // 뚫림
+                Gizmos.color = Color.white;
 
             Gizmos.DrawLine(startEye, player.position);
         }

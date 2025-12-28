@@ -126,6 +126,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 002d1393663ef5b48ac2ce5f0281a0a6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  gameOverUI: {fileID: 2293036452310803996, guid: 3f992cfe1abfeb242a36adda41169d53, type: 3}
   player: {fileID: 0}
   playerScript: {fileID: 0}
   warningRadius: 23.3

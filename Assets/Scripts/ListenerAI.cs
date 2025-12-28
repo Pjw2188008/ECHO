@@ -9,7 +9,7 @@ public class ListenerAI : MonoBehaviour
     [Header("💀 게임오버 UI 연결")]
     public GameObject gameOverUI; // ★ [추가] 여기에 'GameOverPanel'을 연결하세요.
 
-    [Header("📷 카메라 잠금 설정")]
+    [Header("📷 카메라 잠금 설정")]
     public MonoBehaviour playerCameraScript;
 
 
@@ -48,8 +48,8 @@ public class ListenerAI : MonoBehaviour
     public bool isStunned = false;
     private float decayDelayTimer = 0f;
 
-    // 내부 변수
-    private NavMeshAgent agent;
+    // 내부 변수
+    private NavMeshAgent agent;
     private MeshRenderer meshRenderer;
     private bool isChasing = false;
     private bool isPlayerInWarningZone = false;
@@ -81,10 +81,10 @@ public class ListenerAI : MonoBehaviour
             }
         }
 
-        // ★ Start에는 UI를 끄는 코드가 없습니다. 
-        // (유니티 에디터에서 미리 꺼두신 설정 그대로 시작됩니다)
+        // ★ Start에는 UI를 끄는 코드가 없습니다. 
+        // (유니티 에디터에서 미리 꺼두신 설정 그대로 시작됩니다)
 
-        SetRandomDestination();
+        SetRandomDestination();
     }
 
     void Update()
@@ -103,8 +103,8 @@ public class ListenerAI : MonoBehaviour
 
         float distance = Vector3.Distance(transform.position, player.position);
 
-        // 1. 게임 오버 체크
-        if (distance <= catchRadius)
+        // 1. 게임 오버 체크
+        if (distance <= catchRadius)
         {
             if (!isGameOver)
             {
@@ -114,8 +114,8 @@ public class ListenerAI : MonoBehaviour
             return;
         }
 
-        // 2. 경고 범위
-        if (distance <= warningRadius)
+        // 2. 경고 범위
+        if (distance <= warningRadius)
         {
             if (!isPlayerInWarningZone)
             {
@@ -123,9 +123,9 @@ public class ListenerAI : MonoBehaviour
                 if (!hasWhispered)
                 {
                     hasWhispered = true;
-                    // 귓속말 매니저가 있다면 실행
-                    // if (WhisperManager.Instance != null) WhisperManager.Instance.PlayMonsterWhisper(MonsterType.Listener);
-                }
+                    // 귓속말 매니저가 있다면 실행
+                     if (WhisperManager.Instance != null) WhisperManager.Instance.PlayMonsterWhisper(MonsterType.Listener);
+                }
             }
         }
         else
@@ -133,8 +133,8 @@ public class ListenerAI : MonoBehaviour
             isPlayerInWarningZone = false;
         }
 
-        // 3. 감지 및 추격
-        if (distance <= detectionRadius)
+        // 3. 감지 및 추격
+        if (distance <= detectionRadius)
         {
             CheckForPlayer();
         }
@@ -306,8 +306,8 @@ public class ListenerAI : MonoBehaviour
         }
     }
 
-    // ▼▼▼ [수정된 게임오버 함수] ▼▼▼
-    void GameOver()
+    // ▼▼▼ [수정된 게임오버 함수] ▼▼▼
+    void GameOver()
     {
         if (isGameOver) return;
         isGameOver = true;
@@ -315,8 +315,8 @@ public class ListenerAI : MonoBehaviour
         agent.isStopped = true;
         Time.timeScale = 0; // [필수] 시간 정지
 
-        // ★ 여기서 UI를 강제로 켭니다!
-        if (gameOverUI != null)
+        // ★ 여기서 UI를 강제로 켭니다!
+        if (gameOverUI != null)
         {
             gameOverUI.SetActive(true);
         }
@@ -324,22 +324,22 @@ public class ListenerAI : MonoBehaviour
         if (playerCameraScript != null)
         {
             playerCameraScript.enabled = false; // "야, 이제 작동하지 마!"
-        }
+        }
 
-        // [필수] 마우스 커서 보이게 하기
-        Cursor.lockState = CursorLockMode.None;
+        // [필수] 마우스 커서 보이게 하기
+        Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
         Debug.LogError("💀 Game Over");
     }
 
-    // ▼▼▼ [추가된 타이틀 이동 함수] ▼▼▼
-    // "타이틀로 돌아가기" 버튼의 OnClick()에 연결하세요.
-    public void GoToTitle()
+    // ▼▼▼ [추가된 타이틀 이동 함수] ▼▼▼
+    // "타이틀로 돌아가기" 버튼의 OnClick()에 연결하세요.
+    public void GoToTitle()
     {
         Time.timeScale = 1f; // [필수] 시간 흐름 복구
-        SceneManager.LoadScene("StartScene"); // 이름 꼭 확인!
-    }
+        SceneManager.LoadScene("StartScene"); // 이름 꼭 확인!
+    }
 
     void OnDrawGizmosSelected()
     {

@@ -1,32 +1,40 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("1. ¼Óµµ ¼³Á¤")]
+    [Header("1. ì†ë„ ì„¤ì •")]
     public float walkSpeed = 5f;
     public float runSpeed = 10f;
     public float crouchSpeed = 3f;
 
-    [Header("2. ½Ã¾ß ¹× Å° ¼³Á¤")]
+    [Header("2. ì‹œì•¼ ë° í‚¤ ì„¤ì •")]
     public float mouseSensitivity = 2f;
     public float standEyeLevel = 0.6f;
     public float crouchEyeLevel = 0.3f;
     public float standHeight = 1.0f;
     public float crouchHeight = 0.5f;
 
-    [Header("3. ÀÚµ¿ ¾É±â ¼³Á¤")]
+    [Header("3. ìžë™ ì•‰ê¸° ì„¤ì •")]
     public float obstacleCheckDistance = 1.0f;
     public LayerMask obstacleLayer;
 
-    [Header("4. ±âÅ¸ ¹°¸® ¼³Á¤")]
+    [Header("4. ê¸°íƒ€ ë¬¼ë¦¬ ì„¤ì •")]
     public float gravity = -20f;
     public float transitionSpeed = 10f;
 
-    [Header("»óÅÂ È®ÀÎ")]
-    public bool isCrouching = false; // ¡Ú ¸ó½ºÅÍ°¡ È®ÀÎÇÒ º¯¼ö
+    // --- â˜… [ì¶”ê°€] 5. ì‚¬ìš´ë“œ ì„¤ì • ---
+    [Header("5. ì‚¬ìš´ë“œ ì„¤ì •")]
+    public AudioSource footstepSource; // ë°œì†Œë¦¬ë¥¼ ìž¬ìƒí•  ì˜¤ë””ì˜¤ ì†ŒìŠ¤ (ì¸ìŠ¤íŽ™í„°ì—ì„œ ì—°ê²°)
+    public AudioClip walkSound;        // ê±·ê¸° ì†Œë¦¬ íŒŒì¼
+    public AudioClip runSound;         // ë›°ê¸° ì†Œë¦¬ íŒŒì¼
+    [Range(0, 1)] public float walkVolume = 0.5f;
+    [Range(0, 1)] public float runVolume = 1.0f;
+
+    [Header("ìƒíƒœ í™•ì¸")]
+    public bool isCrouching = false;
 
     private CharacterController controller;
     private Transform cameraTransform;
@@ -49,11 +57,18 @@ public class PlayerController : MonoBehaviour
         cameraTransform.localPosition = camPos;
 
         if (obstacleLayer == 0) obstacleLayer = ~0;
+
+        // ë°œì†Œë¦¬ ì˜¤ë””ì˜¤ ì†ŒìŠ¤ ì´ˆê¸° ì„¤ì •
+        if (footstepSource != null)
+        {
+            footstepSource.loop = true;
+            footstepSource.playOnAwake = false;
+        }
     }
 
     void Update()
     {
-        // 1. ½Ã¼± Ã³¸®
+        // 1. ì‹œì„  ì²˜ë¦¬
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
         xRotation -= mouseY;
@@ -61,24 +76,24 @@ public class PlayerController : MonoBehaviour
         cameraTransform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
         transform.Rotate(Vector3.up * mouseX);
 
-        // 2. ÀÌµ¿ ÀÔ·Â
+        // 2. ì´ë™ ìž…ë ¥
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
-
         Vector3 moveInputDirection = transform.right * x + transform.forward * z;
 
-        // --- ¾É±â ÆÇ´Ü ·ÎÁ÷ (¼öÁ¤µÊ) ---
+        // ì•‰ê¸° íŒë‹¨ ë¡œì§
         bool manualCrouch = Input.GetKey(KeyCode.C);
         bool hasCeiling = CheckCeiling();
         bool needAutoCrouch = CheckFrontObstacle(moveInputDirection);
-
-        // ¡Ú [¼öÁ¤] ¾Õ¿¡ 'bool'À» Áö¿ü½À´Ï´Ù! ÀÌÁ¦ ÀÎ½ºÆåÅÍ º¯¼ö¿¡ °ªÀÌ µé¾î°©´Ï´Ù.
         isCrouching = manualCrouch || hasCeiling || needAutoCrouch;
 
-        // 3. ¼Óµµ ¹× ÀÌµ¿
+        // 3. ì†ë„ ê²°ì • ë° ìƒíƒœ í™•ì¸
+        bool isMoving = moveInputDirection.magnitude > 0.1f;
+        bool isRunning = Input.GetKey(KeyCode.LeftShift) && !isCrouching && isMoving;
+
         float currentSpeed = walkSpeed;
         if (isCrouching) currentSpeed = crouchSpeed;
-        else if (Input.GetKey(KeyCode.LeftShift)) currentSpeed = runSpeed;
+        else if (isRunning) currentSpeed = runSpeed;
 
         if (controller.isGrounded && moveDirection.y < 0) moveDirection.y = -2f;
 
@@ -89,12 +104,39 @@ public class PlayerController : MonoBehaviour
 
         controller.Move(moveDirection * Time.deltaTime);
 
-        // 4. ³ôÀÌ Á¶Àý
+        // 4. ë†’ì´ ì¡°ì ˆ
         AdjustHeight(isCrouching);
 
-        // ¡Ú [»èÁ¦] ¸Ç ¹Ø¿¡ ÀÖ´ø Áßº¹µÈ CÅ° È®ÀÎ ·ÎÁ÷Àº Áö¿ü½À´Ï´Ù.
-        // À§¿¡¼­ ÀÌ¹Ì manualCrouch·Î °è»êÇß±â ¶§¹®¿¡ ÇÊ¿ä ¾ø½À´Ï´Ù.
-        // ¿ÀÈ÷·Á ÃµÀåÀÌ ÀÖ¾îµµ CÅ°¸¦ ¶¼¸é ÀÏ¾î¼­¹ö¸®´Â ¹ö±×¸¦ À¯¹ßÇÕ´Ï´Ù.
+        // --- â˜… [ì¶”ê°€] 5. ë°œì†Œë¦¬ ìž¬ìƒ ì‹¤í–‰ ---
+        HandleFootsteps(isMoving, isRunning);
+    }
+
+    // --- â˜… [ì¶”ê°€] ë°œì†Œë¦¬ ì œì–´ í•¨ìˆ˜ ---
+    void HandleFootsteps(bool isMoving, bool isRunning)
+    {
+        if (footstepSource == null) return;
+
+        // [ìˆ˜ì •ëœ ì¡°ê±´] ë•…ì— ìžˆê³  + ì›€ì§ì´ê³  ìžˆê³  + "ì•‰ì•„ìžˆì§€ ì•Šì„ ë•Œ"ë§Œ ì†Œë¦¬ ìž¬ìƒ
+        if (controller.isGrounded && isMoving && !isCrouching)
+        {
+            AudioClip targetClip = isRunning ? runSound : walkSound;
+            float targetVolume = isRunning ? runVolume : walkVolume;
+
+            if (footstepSource.clip != targetClip || !footstepSource.isPlaying)
+            {
+                footstepSource.clip = targetClip;
+                footstepSource.Play();
+            }
+            footstepSource.volume = targetVolume;
+        }
+        else
+        {
+            // ë©ˆì·„ê±°ë‚˜, ê³µì¤‘ì— ë–´ê±°ë‚˜, "ì•‰ì•„ìžˆë‹¤ë©´" ì†Œë¦¬ ì¦‰ì‹œ ì •ì§€
+            if (footstepSource.isPlaying)
+            {
+                footstepSource.Stop();
+            }
+        }
     }
 
     bool CheckFrontObstacle(Vector3 moveDir)

@@ -131,7 +131,7 @@ public class ShaderAI : MonoBehaviour
                 if (!hasWhispered)
                 {
                     hasWhispered = true;
-                    // if (WhisperManager.Instance != null) WhisperManager.Instance.PlayMonsterWhisper(MonsterType.Shader);
+                     if (WhisperManager.Instance != null) WhisperManager.Instance.PlayMonsterWhisper(MonsterType.Shader);
                 }
             }
             Patrol();

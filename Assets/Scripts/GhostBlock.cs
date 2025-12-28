@@ -3,8 +3,8 @@
 public class GhostBlock : MonoBehaviour
 {
     [Header("👻 설정")]
-    public float revealDistance = 3.0f; // 이 거리 안으로 오면 보이기 시작
-    [Range(0f, 1f)] public float maxOpacity = 0.5f; // 최대 선명도 (1이면 완전 불투명, 0.5면 반투명)
+    public float revealDistance = 3.0f;
+    [Range(0f, 1f)] public float maxOpacity = 0.2f; // ★ 텍스처가 너무 잘 보이면 이 값을 0.2로 낮추세요!
 
     private Transform player;
     private MeshRenderer meshRenderer;
@@ -15,44 +15,54 @@ public class GhostBlock : MonoBehaviour
     {
         meshRenderer = GetComponent<MeshRenderer>();
 
-        // 중요: 재질의 복사본을 가져와서 이 블록만 색이 변하게 함
-        mat = meshRenderer.material;
-        originalColor = mat.color;
+        if (meshRenderer != null)
+        {
+            // 재질 복사 (이 블록만 개별적으로 색이 변함)
+            mat = meshRenderer.material;
 
-        // 시작할 때는 완전히 투명하게(Alpha 0) 설정
-        Color startColor = originalColor;
-        startColor.a = 0f;
-        mat.color = startColor;
+            // 원래 텍스처 색상 저장
+            originalColor = mat.color;
 
-        // 플레이어 찾기
-        GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null) player = p.transform;
+            // 시작 시 완전 투명하게
+            Color startColor = originalColor;
+            startColor.a = 0f;
+            mat.color = startColor;
+        }
+
+        // ★ 플레이어 찾기 개선 (태그 없으면 카메라도 찾음)
+        if (player == null)
+        {
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) player = p.transform;
+            else if (Camera.main != null) player = Camera.main.transform;
+        }
     }
 
     void Update()
     {
-        if (player == null) return;
+        if (player == null || mat == null) return;
 
-        // 플레이어와의 거리 계산
         float distance = Vector3.Distance(transform.position, player.position);
 
         if (distance <= revealDistance)
         {
-            // 거리 비율 계산 (가까울수록 1, 멀수록 0)
-            float ratio = 1 - (distance / revealDistance);
+            // 거리 비율 (0 ~ 1)
+            float ratio = 1.0f - (distance / revealDistance);
 
-            // 투명도 설정 (0 ~ maxOpacity 사이)
+            // 투명도 조절 (부드럽게 보정)
+            // Mathf.Pow를 쓰면 선형보다 더 자연스럽게(유령처럼) 나타납니다.
+            // ratio * ratio -> 거리가 조금만 멀어져도 급격히 흐려짐
             float alpha = Mathf.Clamp01(ratio) * maxOpacity;
 
-            // 색상 업데이트
+            // 색상 적용
             Color newColor = originalColor;
             newColor.a = alpha;
             mat.color = newColor;
         }
         else
         {
-            // 거리가 멀어지면 다시 완전히 투명하게
-            if (mat.color.a > 0)
+            // 최적화: 이미 투명하면 색상 변경 안 함
+            if (mat.color.a > 0.01f)
             {
                 Color cleanColor = originalColor;
                 cleanColor.a = 0f;

@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
@@ -25,13 +26,24 @@ public class PlayerController : MonoBehaviour
     public float gravity = -20f;
     public float transitionSpeed = 10f;
 
-    // --- ★ [추가] 5. 사운드 설정 ---
     [Header("5. 사운드 설정")]
-    public AudioSource footstepSource; // 발소리를 재생할 오디오 소스 (인스펙터에서 연결)
-    public AudioClip walkSound;        // 걷기 소리 파일
-    public AudioClip runSound;         // 뛰기 소리 파일
+    public AudioSource footstepSource;
+    public AudioClip walkSound;
+    public AudioClip runSound;
     [Range(0, 1)] public float walkVolume = 0.5f;
     [Range(0, 1)] public float runVolume = 1.0f;
+
+    [Header("6. 스테미나 설정")]
+    public float maxStamina = 100f;
+    public float currentStamina;
+    public float staminaDrainRate = 20f;
+    public float staminaRegenRate = 10f;
+    public Slider staminaSlider;
+
+    // --- ★ [추가] 탈진 시스템 설정 ---
+    [Header("7. 탈진(지침) 설정")]
+    [Range(0f, 1f)] public float recoveryThreshold = 0.3f; // 30% 회복될 때까지 달리기 불가
+    private bool isExhausted = false; // 현재 지쳐서 못 뛰는 상태인가?
 
     [Header("상태 확인")]
     public bool isCrouching = false;
@@ -58,11 +70,17 @@ public class PlayerController : MonoBehaviour
 
         if (obstacleLayer == 0) obstacleLayer = ~0;
 
-        // 발소리 오디오 소스 초기 설정
         if (footstepSource != null)
         {
             footstepSource.loop = true;
             footstepSource.playOnAwake = false;
+        }
+
+        currentStamina = maxStamina;
+        if (staminaSlider != null)
+        {
+            staminaSlider.maxValue = maxStamina;
+            staminaSlider.value = currentStamina;
         }
     }
 
@@ -81,16 +99,31 @@ public class PlayerController : MonoBehaviour
         float z = Input.GetAxis("Vertical");
         Vector3 moveInputDirection = transform.right * x + transform.forward * z;
 
-        // 앉기 판단 로직
+        // 앉기 판단
         bool manualCrouch = Input.GetKey(KeyCode.C);
         bool hasCeiling = CheckCeiling();
         bool needAutoCrouch = CheckFrontObstacle(moveInputDirection);
         isCrouching = manualCrouch || hasCeiling || needAutoCrouch;
 
-        // 3. 속도 결정 및 상태 확인
+        // 3. 움직임 상태 확인
         bool isMoving = moveInputDirection.magnitude > 0.1f;
-        bool isRunning = Input.GetKey(KeyCode.LeftShift) && !isCrouching && isMoving;
 
+        // --- ★ [핵심 로직 변경] 탈진 상태 관리 ---
+        // 스테미나가 0 이하가 되면 탈진 시작
+        if (currentStamina <= 0)
+        {
+            isExhausted = true;
+        }
+        // 탈진 상태인데, 스테미나가 N% (예: 30%) 이상 차오르면 탈진 해제
+        else if (isExhausted && currentStamina >= maxStamina * recoveryThreshold)
+        {
+            isExhausted = false;
+        }
+
+        // 달리기 조건: Shift 누름 + 앉지 않음 + 움직임 + ★ 탈진 상태가 아님(!isExhausted)
+        bool isRunning = Input.GetKey(KeyCode.LeftShift) && !isCrouching && isMoving && !isExhausted;
+
+        // 속도 적용
         float currentSpeed = walkSpeed;
         if (isCrouching) currentSpeed = crouchSpeed;
         else if (isRunning) currentSpeed = runSpeed;
@@ -107,21 +140,53 @@ public class PlayerController : MonoBehaviour
         // 4. 높이 조절
         AdjustHeight(isCrouching);
 
-        // --- ★ [추가] 5. 발소리 재생 실행 ---
+        // 5. 기능 실행
         HandleFootsteps(isMoving, isRunning);
+        HandleStamina(isRunning);
     }
 
-    // --- ★ [추가] 발소리 제어 함수 ---
+    void HandleStamina(bool isRunning)
+    {
+        if (isRunning)
+        {
+            currentStamina -= staminaDrainRate * Time.deltaTime;
+        }
+        else
+        {
+            if (currentStamina < maxStamina)
+            {
+                currentStamina += staminaRegenRate * Time.deltaTime;
+            }
+        }
+
+        currentStamina = Mathf.Clamp(currentStamina, 0, maxStamina);
+
+        if (staminaSlider != null)
+        {
+            staminaSlider.value = currentStamina;
+
+            // (선택사항) 탈진 상태일 때 슬라이더 색상을 빨간색으로 바꿔 시각적 피드백 주기
+            Image fillImage = staminaSlider.fillRect.GetComponent<Image>();
+            if (fillImage != null)
+            {
+                fillImage.color = isExhausted ? Color.red : Color.green; // 혹은 원래 색상
+            }
+        }
+    }
+
     void HandleFootsteps(bool isMoving, bool isRunning)
     {
         if (footstepSource == null) return;
 
-        // [수정된 조건] 땅에 있고 + 움직이고 있고 + "앉아있지 않을 때"만 소리 재생
+        // 땅에 있고, 움직이고, 앉지 않았을 때
         if (controller.isGrounded && isMoving && !isCrouching)
         {
+            // ★ 탈진 상태(isExhausted)가 되면 isRunning이 false가 되므로
+            // 자동으로 walkSound가 선택되어 재생됩니다.
             AudioClip targetClip = isRunning ? runSound : walkSound;
             float targetVolume = isRunning ? runVolume : walkVolume;
 
+            // 클립이 다르거나 재생 중이 아니면 새로 재생
             if (footstepSource.clip != targetClip || !footstepSource.isPlaying)
             {
                 footstepSource.clip = targetClip;
@@ -131,7 +196,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // 멈췄거나, 공중에 떴거나, "앉아있다면" 소리 즉시 정지
+            // 멈추거나 앉거나 공중에 뜨면 소리 끔
             if (footstepSource.isPlaying)
             {
                 footstepSource.Stop();
@@ -139,6 +204,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // (아래 함수들은 기존과 동일)
     bool CheckFrontObstacle(Vector3 moveDir)
     {
         if (moveDir.magnitude < 0.1f) return false;
